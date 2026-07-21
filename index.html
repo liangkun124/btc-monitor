@@ -2,111 +2,153 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>BTC 实时价格</title>
+
 <style>
-body{
+*{
     margin:0;
+    padding:0;
+    box-sizing:border-box;
+}
+
+body{
     background:#000;
     color:#fff;
-    font-family:-apple-system;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI";
     display:flex;
     justify-content:center;
     align-items:center;
     height:100vh;
 }
+
 #box{
     text-align:center;
+    width:100%;
 }
+
+h1{
+    font-size:34px;
+    margin-bottom:30px;
+}
+
 #price{
     font-size:72px;
-    color:#00ff66;
     font-weight:bold;
+    color:#00ff66;
+    transition:.3s;
 }
+
 #sum{
-    margin-top:20px;
-    font-size:48px;
-    color:#ffd60a;
+    margin-top:25px;
+    font-size:46px;
+    color:#ffd54f;
 }
+
 #status{
-    margin-top:15px;
+    margin-top:20px;
     color:#999;
-    font-size:20px;
+    font-size:22px;
+}
+
+#time{
+    margin-top:10px;
+    color:#777;
+    font-size:18px;
 }
 </style>
+
 </head>
 
 <body>
 
 <div id="box">
 
+<h1>BTC / USDT</h1>
+
 <div id="price">连接中...</div>
 
-<div id="sum"></div>
+<div id="sum">数字和：--</div>
 
-<div id="status"></div>
+<div id="status">等待数据...</div>
+
+<div id="time"></div>
 
 </div>
 
 <script>
 
-function calc(str){
+let lastPrice = 0;
 
-let s=0;
+async function updateBTC(){
 
-for(let c of str){
+    try{
 
-if(c>='0'&&c<='9')
-s+=parseInt(c);
+        const res = await fetch(
+        "https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT");
+
+        const data = await res.json();
+
+        const price = parseFloat(data.price);
+
+        const text = price.toFixed(2);
+
+        const priceDiv = document.getElementById("price");
+
+        if(lastPrice!==0){
+
+            if(price>lastPrice){
+
+                priceDiv.style.color="#00ff66";
+                priceDiv.innerHTML="▲ "+text;
+
+            }else if(price<lastPrice){
+
+                priceDiv.style.color="#ff3b30";
+                priceDiv.innerHTML="▼ "+text;
+
+            }else{
+
+                priceDiv.style.color="#ffffff";
+                priceDiv.innerHTML=text;
+
+            }
+
+        }else{
+
+            priceDiv.innerHTML=text;
+
+        }
+
+        lastPrice=price;
+
+        let sum=0;
+
+        text.replace(".","").split("").forEach(i=>{
+            sum+=parseInt(i);
+        });
+
+        document.getElementById("sum").innerHTML="数字和："+sum;
+
+        document.getElementById("status").innerHTML="连接成功";
+
+        document.getElementById("time").innerHTML=
+        "更新时间："+new Date().toLocaleTimeString();
+
+    }catch(e){
+
+        document.getElementById("status").innerHTML=
+        "连接失败："+e.message;
+
+    }
 
 }
 
-return s;
+updateBTC();
 
-}
-
-function connect(){
-
-const ws=new WebSocket("wss://stream.binance.com:9443/ws/btcusdt@trade");
-
-ws.onopen=()=>{
-
-document.getElementById("status").innerHTML="Binance 已连接";
-
-}
-
-ws.onmessage=(e)=>{
-
-const data=JSON.parse(e.data);
-
-const price=data.p;
-
-document.getElementById("price").innerHTML=price;
-
-document.getElementById("sum").innerHTML=
-"数字和："+calc(price);
-
-}
-
-ws.onclose=()=>{
-
-document.getElementById("status").innerHTML="重新连接...";
-
-setTimeout(connect,2000);
-
-}
-
-ws.onerror=()=>{
-
-ws.close();
-
-}
-
-}
-
-connect();
+setInterval(updateBTC,1000);
 
 </script>
 
 </body>
-
 </html>
