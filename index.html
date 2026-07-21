@@ -3,152 +3,470 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>BTC 实时价格</title>
+<title>BTC 数字和趋势</title>
 
 <style>
+
 *{
-    margin:0;
-    padding:0;
-    box-sizing:border-box;
+margin:0;
+padding:0;
+box-sizing:border-box;
 }
 
 body{
-    background:#000;
-    color:#fff;
-    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI";
-    display:flex;
-    justify-content:center;
-    align-items:center;
-    height:100vh;
+background:#000;
+color:#fff;
+font-family:-apple-system,BlinkMacSystemFont,"Segoe UI";
+display:flex;
+justify-content:center;
+align-items:center;
+min-height:100vh;
 }
 
 #box{
-    text-align:center;
-    width:100%;
+width:95%;
+text-align:center;
 }
 
 h1{
-    font-size:34px;
-    margin-bottom:30px;
+font-size:34px;
+margin-bottom:25px;
 }
 
 #price{
-    font-size:72px;
-    font-weight:bold;
-    color:#00ff66;
-    transition:.3s;
+font-size:70px;
+font-weight:bold;
+color:#00ff66;
 }
 
 #sum{
-    margin-top:25px;
-    font-size:46px;
-    color:#ffd54f;
+margin-top:20px;
+font-size:45px;
+color:#ffd54f;
 }
 
-#status{
-    margin-top:20px;
-    color:#999;
-    font-size:22px;
+#status,#time{
+margin-top:10px;
+color:#888;
+font-size:18px;
 }
 
-#time{
-    margin-top:10px;
-    color:#777;
-    font-size:18px;
+
+.title{
+margin-top:30px;
+font-size:25px;
+color:#00ffff;
 }
+
+
+#history,#trend{
+
+margin-top:15px;
+font-size:18px;
+line-height:32px;
+
+max-height:350px;
+overflow:auto;
+
+}
+
+
+.item{
+border-bottom:1px solid #222;
+}
+
+
+.big{
+color:#00ff66;
+}
+
+.small{
+color:#ff5555;
+}
+
 </style>
 
 </head>
 
+
 <body>
+
 
 <div id="box">
 
+
 <h1>BTC / USDT</h1>
 
-<div id="price">连接中...</div>
 
-<div id="sum">数字和：--</div>
+<div id="price">
+连接中...
+</div>
 
-<div id="status">等待数据...</div>
+
+<div id="sum">
+数字和：--
+</div>
+
+
+<div id="status">
+等待数据...
+</div>
+
 
 <div id="time"></div>
 
+
+
+<div class="title">
+最近10次价格和
 </div>
+
+<div id="history"></div>
+
+
+
+<div class="title">
+24小时大小趋势
+</div>
+
+<div id="trend"></div>
+
+
+
+</div>
+
+
 
 <script>
 
-let lastPrice = 0;
 
-async function updateBTC(){
+let history=[];
 
-    try{
 
-        const res = await fetch(
-        "https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT");
+//读取保存数据
 
-        const data = await res.json();
+let records=
+JSON.parse(localStorage.getItem("btc_records")||"[]");
 
-        const price = parseFloat(data.price);
 
-        const text = price.toFixed(2);
 
-        const priceDiv = document.getElementById("price");
+//最近10次
 
-        if(lastPrice!==0){
+function showHistory(){
 
-            if(price>lastPrice){
 
-                priceDiv.style.color="#00ff66";
-                priceDiv.innerHTML="▲ "+text;
+let html="";
 
-            }else if(price<lastPrice){
 
-                priceDiv.style.color="#ff3b30";
-                priceDiv.innerHTML="▼ "+text;
+history.forEach(i=>{
 
-            }else{
 
-                priceDiv.style.color="#ffffff";
-                priceDiv.innerHTML=text;
+html+=`
 
-            }
+<div class="item">
 
-        }else{
+${i.time}
 
-            priceDiv.innerHTML=text;
+&nbsp;
 
-        }
+${i.price}
 
-        lastPrice=price;
+&nbsp;
 
-        let sum=0;
+和:${i.sum}
 
-        text.replace(".","").split("").forEach(i=>{
-            sum+=parseInt(i);
-        });
+</div>
 
-        document.getElementById("sum").innerHTML="数字和："+sum;
+`;
 
-        document.getElementById("status").innerHTML="连接成功";
+});
 
-        document.getElementById("time").innerHTML=
-        "更新时间："+new Date().toLocaleTimeString();
 
-    }catch(e){
+document.getElementById("history").innerHTML=html;
 
-        document.getElementById("status").innerHTML=
-        "连接失败："+e.message;
-
-    }
 
 }
 
+
+
+//趋势分析
+
+function analyzeTrend(){
+
+
+let result="";
+
+
+let now=new Date();
+
+
+//按小时统计
+
+for(let h=0;h<24;h++){
+
+
+let big=0;
+let small=0;
+
+
+records.forEach(r=>{
+
+
+let d=new Date(r.time);
+
+
+if(d.getHours()==h){
+
+
+if(r.type=="大")
+big++;
+
+else
+small++;
+
+
+}
+
+
+});
+
+
+
+let total=big+small;
+
+
+if(total==0){
+
+continue;
+
+}
+
+
+
+let bp=(big/total*100).toFixed(1);
+
+let sp=(small/total*100).toFixed(1);
+
+
+let trend="平衡";
+
+
+if(bp>55)
+trend="偏大 ↑";
+
+
+if(sp>55)
+trend="偏小 ↓";
+
+
+
+result+=`
+
+<div class="item">
+
+${h}:00-${h+1}:00
+
+&nbsp;
+
+大:${bp}%
+
+&nbsp;
+
+小:${sp}%
+
+&nbsp;
+
+${trend}
+
+</div>
+
+`;
+
+
+}
+
+
+
+document.getElementById("trend").innerHTML=result;
+
+
+}
+
+
+
+
+
+async function updateBTC(){
+
+
+try{
+
+
+let res=await fetch(
+
+"https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT"
+
+);
+
+
+let data=await res.json();
+
+
+let price=parseFloat(data.price);
+
+
+let text=price.toFixed(2);
+
+
+
+document.getElementById("price").innerHTML=text;
+
+
+
+//数字和
+
+let sum=0;
+
+
+text.replace(".","")
+.split("")
+.forEach(i=>{
+
+sum+=parseInt(i);
+
+});
+
+
+
+document.getElementById("sum").innerHTML=
+"数字和："+sum;
+
+
+
+//个位判断
+
+let last=sum%10;
+
+
+let type;
+
+
+if(last<=4){
+
+type="小";
+
+}else{
+
+type="大";
+
+}
+
+
+
+//最近10次
+
+history.unshift({
+
+time:new Date().toLocaleTimeString(),
+
+price:text,
+
+sum:sum
+
+});
+
+
+if(history.length>10){
+
+history.pop();
+
+}
+
+
+showHistory();
+
+
+
+//保存24小时
+
+records.push({
+
+time:new Date().toISOString(),
+
+price:text,
+
+sum:sum,
+
+type:type
+
+});
+
+
+
+//删除24小时前数据
+
+let now=Date.now();
+
+
+records=
+records.filter(r=>{
+
+return now-new Date(r.time).getTime()
+<
+24*60*60*1000;
+
+});
+
+
+
+localStorage.setItem(
+
+"btc_records",
+
+JSON.stringify(records)
+
+);
+
+
+
+analyzeTrend();
+
+
+
+document.getElementById("status").innerHTML=
+"连接成功";
+
+
+document.getElementById("time").innerHTML=
+"更新时间："+new Date().toLocaleTimeString();
+
+
+
+}
+
+catch(e){
+
+
+document.getElementById("status").innerHTML=
+"连接失败："+e.message;
+
+
+}
+
+
+}
+
+
+
 updateBTC();
+
 
 setInterval(updateBTC,1000);
 
+
+
 </script>
+
 
 </body>
 </html>
