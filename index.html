@@ -1,9 +1,11 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
+
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>BTC 数字和趋势</title>
+
+<title>BTC数字和趋势</title>
 
 <style>
 
@@ -14,54 +16,75 @@ box-sizing:border-box;
 }
 
 body{
+
 background:#000;
 color:#fff;
 font-family:-apple-system,BlinkMacSystemFont,"Segoe UI";
+
 display:flex;
 justify-content:center;
 align-items:center;
+
 min-height:100vh;
+
 }
+
 
 #box{
+
 width:95%;
 text-align:center;
+
 }
+
 
 h1{
+
 font-size:34px;
 margin-bottom:25px;
+
 }
 
+
 #price{
+
 font-size:70px;
 font-weight:bold;
 color:#00ff66;
+
 }
 
+
 #sum{
+
 margin-top:20px;
 font-size:45px;
 color:#ffd54f;
+
 }
 
+
 #status,#time{
+
 margin-top:10px;
-color:#888;
 font-size:18px;
+color:#888;
+
 }
 
 
 .title{
+
 margin-top:30px;
 font-size:25px;
 color:#00ffff;
+
 }
 
 
-#history,#trend{
+.list{
 
-margin-top:15px;
+margin-top:10px;
 font-size:18px;
 line-height:32px;
 
@@ -72,17 +95,11 @@ overflow:auto;
 
 
 .item{
+
 border-bottom:1px solid #222;
+
 }
 
-
-.big{
-color:#00ff66;
-}
-
-.small{
-color:#ff5555;
-}
 
 </style>
 
@@ -121,15 +138,17 @@ color:#ff5555;
 最近10次价格和
 </div>
 
-<div id="history"></div>
+
+<div id="history" class="list"></div>
 
 
 
 <div class="title">
-24小时大小趋势
+个位组合持续统计
 </div>
 
-<div id="trend"></div>
+
+<div id="stats" class="list"></div>
 
 
 
@@ -143,14 +162,59 @@ color:#ff5555;
 let history=[];
 
 
-//读取保存数据
-
-let records=
-JSON.parse(localStorage.getItem("btc_records")||"[]");
+// 当前个位
+let lastDigit=null;
 
 
+// 当前组合开始时间
+let comboStart=0;
 
-//最近10次
+
+// 当前组合
+let currentCombo=null;
+
+
+// 统计组合
+
+let combos={};
+
+
+let comboList=[
+
+"0→1",
+"1→2",
+"2→3",
+"3→4",
+"4→5",
+"5→6",
+"6→7",
+"7→8",
+"8→9",
+"9→0",
+"0→9"
+
+];
+
+
+
+comboList.forEach(c=>{
+
+combos[c]={
+
+count:0,
+
+total:0,
+
+last:0
+
+};
+
+});
+
+
+
+
+
 
 function showHistory(){
 
@@ -189,108 +253,191 @@ document.getElementById("history").innerHTML=html;
 
 
 
-//趋势分析
-
-function analyzeTrend(){
 
 
-let result="";
 
 
-let now=new Date();
+function showStats(){
 
 
-//按小时统计
-
-for(let h=0;h<24;h++){
+let html="";
 
 
-let big=0;
-let small=0;
+comboList.forEach(c=>{
 
 
-records.forEach(r=>{
+let d=combos[c];
 
 
-let d=new Date(r.time);
+let avg=0;
 
 
-if(d.getHours()==h){
+if(d.count>0){
 
-
-if(r.type=="大")
-big++;
-
-else
-small++;
-
+avg=(d.total/d.count).toFixed(1);
 
 }
 
+
+
+html+=`
+
+<div class="item">
+
+${c}
+
+&nbsp;
+
+次数:${d.count}
+
+&nbsp;
+
+最近:${d.last}秒
+
+&nbsp;
+
+平均:${avg}秒
+
+</div>
+
+
+`;
 
 });
 
 
-
-let total=big+small;
-
-
-if(total==0){
-
-continue;
-
-}
-
-
-
-let bp=(big/total*100).toFixed(1);
-
-let sp=(small/total*100).toFixed(1);
-
-
-let trend="平衡";
-
-
-if(bp>55)
-trend="偏大 ↑";
-
-
-if(sp>55)
-trend="偏小 ↓";
-
-
-
-result+=`
-
-<div class="item">
-
-${h}:00-${h+1}:00
-
-&nbsp;
-
-大:${bp}%
-
-&nbsp;
-
-小:${sp}%
-
-&nbsp;
-
-${trend}
-
-</div>
-
-`;
+document.getElementById("stats").innerHTML=html;
 
 
 }
 
 
 
-document.getElementById("trend").innerHTML=result;
+
+
+
+
+function checkCombo(newDigit){
+
+
+
+if(lastDigit===null){
+
+lastDigit=newDigit;
+
+return;
+
+}
+
+
+
+let combo=lastDigit+"→"+newDigit;
+
+
+
+// 判断是否属于统计组合
+
+if(combos[combo]){
+
+
+
+// 如果进入新的组合
+
+if(currentCombo!==combo){
+
+
+
+// 结束旧组合
+
+if(currentCombo!==null){
+
+
+finishCombo();
 
 
 }
+
+
+
+currentCombo=combo;
+
+comboStart=Date.now();
+
+
+}
+
+
+
+}
+
+
+// 不符合任何组合
+
+else{
+
+
+if(currentCombo!==null){
+
+
+finishCombo();
+
+
+}
+
+
+currentCombo=null;
+
+
+}
+
+
+
+lastDigit=newDigit;
+
+
+}
+
+
+
+
+
+function finishCombo(){
+
+
+let seconds=Math.floor(
+
+(Date.now()-comboStart)/1000
+
+);
+
+
+
+if(seconds<=0){
+
+seconds=1;
+
+}
+
+
+
+let d=combos[currentCombo];
+
+
+d.count++;
+
+d.total+=seconds;
+
+d.last=seconds;
+
+
+showStats();
+
+
+}
+
+
+
+
 
 
 
@@ -309,7 +456,9 @@ let res=await fetch(
 );
 
 
+
 let data=await res.json();
+
 
 
 let price=parseFloat(data.price);
@@ -323,7 +472,9 @@ document.getElementById("price").innerHTML=text;
 
 
 
-//数字和
+
+
+// 数字和
 
 let sum=0;
 
@@ -332,38 +483,33 @@ text.replace(".","")
 .split("")
 .forEach(i=>{
 
+
 sum+=parseInt(i);
+
 
 });
 
 
 
 document.getElementById("sum").innerHTML=
+
 "数字和："+sum;
 
 
 
-//个位判断
 
-let last=sum%10;
+// 个位
 
-
-let type;
-
-
-if(last<=4){
-
-type="小";
-
-}else{
-
-type="大";
-
-}
+let digit=sum%10;
 
 
 
-//最近10次
+checkCombo(digit);
+
+
+
+
+// 最近10次
 
 history.unshift({
 
@@ -374,6 +520,7 @@ price:text,
 sum:sum
 
 });
+
 
 
 if(history.length>10){
@@ -387,58 +534,16 @@ showHistory();
 
 
 
-//保存24小时
-
-records.push({
-
-time:new Date().toISOString(),
-
-price:text,
-
-sum:sum,
-
-type:type
-
-});
-
-
-
-//删除24小时前数据
-
-let now=Date.now();
-
-
-records=
-records.filter(r=>{
-
-return now-new Date(r.time).getTime()
-<
-24*60*60*1000;
-
-});
-
-
-
-localStorage.setItem(
-
-"btc_records",
-
-JSON.stringify(records)
-
-);
-
-
-
-analyzeTrend();
-
-
 
 document.getElementById("status").innerHTML=
+
 "连接成功";
 
 
 document.getElementById("time").innerHTML=
-"更新时间："+new Date().toLocaleTimeString();
+
+"更新时间："+
+new Date().toLocaleTimeString();
 
 
 
@@ -448,6 +553,7 @@ catch(e){
 
 
 document.getElementById("status").innerHTML=
+
 "连接失败："+e.message;
 
 
@@ -455,6 +561,8 @@ document.getElementById("status").innerHTML=
 
 
 }
+
+
 
 
 
